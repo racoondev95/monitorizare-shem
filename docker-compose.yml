@@ -1,0 +1,39 @@
+services:
+  db:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: shem
+      POSTGRES_PASSWORD: ${DB_PASSWORD:?Setează DB_PASSWORD în .env}
+      POSTGRES_DB: shem
+    volumes:
+      - shem_pgdata:/var/lib/postgresql/data
+    ports:
+      # Expus doar pe localhost, util pentru `npm run dev`
+      - "127.0.0.1:5432:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U shem -d shem"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  app:
+    build: .
+    restart: unless-stopped
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      DATABASE_URL: postgres://shem:${DB_PASSWORD}@db:5432/shem
+      SESSION_SECRET: ${SESSION_SECRET:?Setează SESSION_SECRET în .env}
+      ADMIN_EMAIL: ${ADMIN_EMAIL:-admin@example.com}
+      ADMIN_PASSWORD: ${ADMIN_PASSWORD:?Setează ADMIN_PASSWORD în .env}
+      ADMIN_NAME: ${ADMIN_NAME:-Administrator}
+      APP_TIMEZONE: ${APP_TIMEZONE:-Europe/Bucharest}
+      COOKIE_SECURE: ${COOKIE_SECURE:-false}
+      ALLOW_REGISTRATION: ${ALLOW_REGISTRATION:-true}
+    ports:
+      - "${APP_PORT:-3000}:3000"
+
+volumes:
+  shem_pgdata:
